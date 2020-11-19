@@ -100,7 +100,7 @@ class HuffmanCoding:
         filename = filename.split("/")[1]
         output_path = "compressedFiles/"+filename + ".bin"
 
-        with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
+        with open(self.path, 'r+', encoding="utf8", errors='ignore') as file, open(output_path, 'wb') as output:
             text = file.read()
             text = text.rstrip()
 
@@ -115,7 +115,7 @@ class HuffmanCoding:
             b = self.get_byte_array(padded_encoded_text)
             output.write(bytes(b))
 
-        print("Compressed")
+        # print("Compressed")
         return output_path
 
     """ functions for decompression: """
