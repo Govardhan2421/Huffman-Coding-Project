@@ -95,12 +95,38 @@ class HuffmanCoding:
             b.append(int(byte, 2))
         return b
 
+    def handleImageFileCompression(self):
+
+        image_path = self.path  # "filesToCompress/samplePic.jpg"
+
+        with open(image_path, "rb") as image_file:
+            import base64
+
+            # 1) Convert Image to Base64
+            text = base64.b64encode(image_file.read())
+
+            # 2) Convert Base64 to text(String)
+            text = text.decode("utf-8")
+
+            # 3) Create a new file to store the text
+            with open("filesToCompress/imageToText.txt", "w+") as file:
+                file = file.write(text)
+
     def compress(self):
         filename, file_extension = os.path.splitext(self.path)
         filename = filename.split("/")[1]
-        output_path = "compressedFiles/"+filename + ".bin"
+        old_path = self.path
+        output_path = "compressedFiles/" + filename + ".bin"
 
-        with open(self.path, 'r+', encoding="utf8", errors='ignore') as file, open(output_path, 'wb') as output:
+        if(file_extension in [".png", ".jpg"]):
+            # Below func creates an file(imageToText.txt) which we set as path in the below lines
+            self.handleImageFileCompression()
+            # Store the original path to preserve the fileNames etc
+            old_path = self.path
+            # Change the path
+            self.path = "filesToCompress/imageToText.txt"
+
+        with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
             text = file.read()
             text = text.rstrip()
 
@@ -115,7 +141,8 @@ class HuffmanCoding:
             b = self.get_byte_array(padded_encoded_text)
             output.write(bytes(b))
 
-        # print("Compressed")
+        # Now change the path to its original form
+        self.path = old_path
         return output_path
 
     """ functions for decompression: """
@@ -142,13 +169,24 @@ class HuffmanCoding:
 
         return decoded_text
 
+    def handleImageFileDeCompression(self, decompressed_text, output_path):
+        print("Something diff for",  output_path)
+
+        text = decompressed_text
+        text = text.encode("utf-8")
+        with open(output_path, "wb") as file:
+            import base64
+            image = base64.b64decode(text)
+            file = file.write(image)
+
     def decompress(self, input_path):
+
         filename, file_extension = os.path.splitext(self.path)
         filename = filename.split("/")[1]
         output_path = "deCompressedFiles/"+filename + "_decompressed" + file_extension
+
         with open(input_path, 'rb') as file, open(output_path, 'w') as output:
             bit_string = ""
-
             byte = file.read(1)
             while(len(byte) > 0):
                 byte = ord(byte)
@@ -160,7 +198,10 @@ class HuffmanCoding:
 
             decompressed_text = self.decode_text(encoded_text)
 
-            output.write(decompressed_text)
+            if(file_extension in [".png", ".jpg"]):
+                self.handleImageFileDeCompression(
+                    decompressed_text, output_path)
+            else:
+                output.write(decompressed_text)
 
-        print("Decompressed")
         return output_path
