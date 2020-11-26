@@ -1,6 +1,5 @@
 # This is the Start of our Program
 
-import os
 import time  # For Progress bar
 from alive_progress import alive_bar  # For Progress bar
 import sys
@@ -29,13 +28,13 @@ def deCompressFile(hf, op):
 
 
 if __name__ == "__main__":
-    from HuffmanCoding import HuffmanCoding
+    from Huffman import Huffman
 
     # 1) Path of the file to be compressed
-    path = "filesToCompress/large_image.jpg"
+    path = "filesToCompress/sampleText.txt"
 
     # 2) Create an Object of Class(HuffmanCoding)
-    huffman = HuffmanCoding(path)
+    huffman = Huffman(path)
 
     # 3) Method(Compress) returns the path of the compressed file
     compressed_file_path = compressFile(huffman)
