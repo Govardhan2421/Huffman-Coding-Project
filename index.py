@@ -9,7 +9,7 @@ sys.dont_write_bytecode = True  # Prevents .pyc(ByteCode) files creation
 def compressFile(hf):
     print("Compressing.....")
     with alive_bar(len(range(100))) as bar:
-        output_path = hf.compress()
+        output_path = hf.compressTheFile()
         for i in range(100):
             bar()
             time.sleep(0.01)

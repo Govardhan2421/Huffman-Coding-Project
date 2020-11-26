@@ -10,59 +10,108 @@ class Huffman:
         self.codes = {}
         self.reverse_mapping = {}
 
-    def compress(self):
+    """
+    **************************************************************************************
+    ********************************* Compression Module *********************************
+    **************************************************************************************
+    """
+
+    def compressTheFile(self):
         # 1) Get name and extension of the file
-        filename, file_extension = os.path.splitext(self.path)
+        name_of_file, file_extension = os.path.splitext(self.path)
+
         # 2) Use in-built string method(split) to get the file name
-        filename = filename.split("/")[1]
+        name_of_file = name_of_file.split("/")[1]
+
         # 3) Preserve the original path in old_path variable
         old_path = self.path
-        # 4) Create an fileName.bin(file) inside compressedFiles folder
-        output_path = "compressedFiles/" + filename + ".bin"
+
+        # 4) Create a file with extension(.bin) inside Folder(compressedFiles)
+        output_path = "compressedFiles/" + name_of_file + ".bin"
 
         # 5) If the fileType is Image, enter the below block
         if(file_extension in [".png", ".jpg"]):
-            # Objective: Images
-            # Below method creates an file(imageToText.txt) which we set as path in the below lines
+            # Images cannot be simply compressed with Huffman, below method should be invoked for further processing
             self.handleImageFileCompression()
             # Store the original path to preserve the fileNames etc
             old_path = self.path
             # Change the path
             self.path = "filesToCompress/imageToText.txt"
 
-        with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
-            text = file.read()
-            text = text.rstrip()
+        """
+        **************************************************************************************
+        ********************************* Actual Compression Begins *********************************
+        **************************************************************************************
+        """
+        with open(self.path, 'r+') as file:
+            # 1) Read contents of the file and strip any unwanted spaces
+            content = file.read().strip()
 
-            frequency = self.make_frequency_dict(text)
-            self.make_heap(frequency)
-            self.merge_nodes()
-            self.make_codes()
+            # 2) Build a Character Frequency Dictionary
+            frequency = self.computeCharFrequency(content)
 
-            encoded_text = self.get_encoded_text(text)
+            # 3) Build a Heap with the frequency Values
+            self.buildHeap(frequency)
+
+            # 4) Merge the Nodes
+            self.mergeNodes()
+            # 5) Assgin Unique codes
+            self.assignCodes()
+
+            # 6) Now we have to encode the Text
+            encoded_text = self.encodeText(content)
             padded_encoded_text = self.pad_encoded_text(encoded_text)
 
             b = self.get_byte_array(padded_encoded_text)
-            output.write(bytes(b))
+
+            # 7) Dump the output in the below Files
+            with open(output_path, 'wb') as output:
+                output.write(bytes(b))
 
         # Now change the path to its original form
         self.path = old_path
+
         return output_path
 
-    def make_frequency_dict(self, text):
+    def handleImageFileCompression(self):
+        """
+        Objective: Images cannot be simply compressed with Huffman, below flow is necessary
+
+        ImageFile(Byte Format) -> Convert To base64 -> Decode base64 to Text -> Apply Huffman compression
+        """
+        image_path = self.path
+
+        with open(image_path, "rb") as image_file:
+            import base64
+
+            # 1) Convert Image to Base64
+            text = base64.b64encode(image_file.read())
+
+            # 2) Convert Base64 to text(String)
+            text = text.decode("utf-8")
+
+            # 3) Create a new file to store the text
+            with open("filesToCompress/imageToText.txt", "w+") as file:
+                file.write(text)
+
+    def computeCharFrequency(self, text):
+        # Init an emtpy Dictionary
         frequency = {}
+        # Loop over every char in the Text
         for character in text:
-            if not character in frequency:
-                frequency[character] = 0
-            frequency[character] += 1
+            if character in frequency:
+                frequency[character] += 1
+            else:
+                frequency[character] = 1
+
         return frequency
 
-    def make_heap(self, frequency):
-        for key in frequency:
-            node = self.HeapNode(key, frequency[key])
+    def buildHeap(self, frequencyList):
+        for key in frequencyList:
+            node = self.HeapNode(key, frequencyList[key])
             heapq.heappush(self.heap, node)
 
-    def merge_nodes(self):
+    def mergeNodes(self):
         while(len(self.heap) > 1):
             node1 = heapq.heappop(self.heap)
             node2 = heapq.heappop(self.heap)
@@ -73,7 +122,7 @@ class Huffman:
 
             heapq.heappush(self.heap, merged)
 
-    def make_codes_helper(self, root, current_code):
+    def helper(self, root, current_code):
         if(root == None):
             return
 
@@ -85,12 +134,12 @@ class Huffman:
         self.make_codes_helper(root.left, current_code + "0")
         self.make_codes_helper(root.right, current_code + "1")
 
-    def make_codes(self):
+    def assignCodes(self):
         root = heapq.heappop(self.heap)
         current_code = ""
-        self.make_codes_helper(root, current_code)
+        self.helper(root, current_code)
 
-    def get_encoded_text(self, text):
+    def encodeText(self, text):
         encoded_text = ""
         for character in text:
             encoded_text += self.codes[character]
@@ -116,22 +165,39 @@ class Huffman:
             b.append(int(byte, 2))
         return b
 
-    def handleImageFileCompression(self):
+    """
+    **************************************************************************************
+    ********************************* De-Compression Module ******************************
+    **************************************************************************************
+    """
 
-        image_path = self.path  # "filesToCompress/samplePic.jpg"
+    def decompress(self, input_path):
 
-        with open(image_path, "rb") as image_file:
-            import base64
+        # 1) Get name and extension of the file
+        name_of_file, file_extension = os.path.splitext(self.path)
+        name_of_file = name_of_file.split("/")[1]
+        output_path = "deCompressedFiles/"+name_of_file + "_decompressed" + file_extension
 
-            # 1) Convert Image to Base64
-            text = base64.b64encode(image_file.read())
+        with open(input_path, 'rb') as file, open(output_path, 'w') as output:
+            bit_string = ""
+            byte = file.read(1)
+            while(len(byte) > 0):
+                byte = ord(byte)
+                bits = bin(byte)[2:].rjust(8, '0')
+                bit_string += bits
+                byte = file.read(1)
 
-            # 2) Convert Base64 to text(String)
-            text = text.decode("utf-8")
+            encoded_text = self.remove_padding(bit_string)
 
-            # 3) Create a new file to store the text
-            with open("filesToCompress/imageToText.txt", "w+") as file:
-                file = file.write(text)
+            decompressed_text = self.decode_text(encoded_text)
+
+            if(file_extension in [".png", ".jpg"]):
+                self.handleImageFileDeCompression(
+                    decompressed_text, output_path)
+            else:
+                output.write(decompressed_text)
+
+        return output_path
 
     def remove_padding(self, padded_encoded_text):
         padded_info = padded_encoded_text[:8]
@@ -165,48 +231,20 @@ class Huffman:
             image = base64.b64decode(text)
             file = file.write(image)
 
-    def decompress(self, input_path):
+    class HeapNode:
+        def __init__(self, char, freq):
+            self.char = char
+            self.freq = freq
+            self.left = None
+            self.right = None
 
-        filename, file_extension = os.path.splitext(self.path)
-        filename = filename.split("/")[1]
-        output_path = "deCompressedFiles/"+filename + "_decompressed" + file_extension
+        # defining comparators less_than and equals
+        def __lt__(self, other):
+            return self.freq < other.freq
 
-        with open(input_path, 'rb') as file, open(output_path, 'w') as output:
-            bit_string = ""
-            byte = file.read(1)
-            while(len(byte) > 0):
-                byte = ord(byte)
-                bits = bin(byte)[2:].rjust(8, '0')
-                bit_string += bits
-                byte = file.read(1)
-
-            encoded_text = self.remove_padding(bit_string)
-
-            decompressed_text = self.decode_text(encoded_text)
-
-            if(file_extension in [".png", ".jpg"]):
-                self.handleImageFileDeCompression(
-                    decompressed_text, output_path)
-            else:
-                output.write(decompressed_text)
-
-        return output_path
-
-
-class HeapNode:
-    def __init__(self, char, freq):
-        self.char = char
-        self.freq = freq
-        self.left = None
-        self.right = None
-
-    # defining comparators less_than and equals
-    def __lt__(self, other):
-        return self.freq < other.freq
-
-    def __eq__(self, other):
-        if(other == None):
-            return False
-        if(not isinstance(other, HeapNode)):
-            return False
-        return self.freq == other.freq
+        def __eq__(self, other):
+            if(other == None):
+                return False
+            if(not isinstance(other, HeapNode)):
+                return False
+            return self.freq == other.freq
