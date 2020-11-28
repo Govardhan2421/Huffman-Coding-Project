@@ -60,9 +60,9 @@ class Huffman:
 
             # 6) Now we have to encode the Text
             encoded_text = self.encodeText(content)
-            padded_encoded_text = self.pad_encoded_text(encoded_text)
+            padded_encoded_text = self.padEncodedText(encoded_text)
 
-            b = self.get_byte_array(padded_encoded_text)
+            b = self.getByteArray(padded_encoded_text)
 
             # 7) Dump the output in the below Files
             with open(output_path, 'wb') as output:
@@ -131,8 +131,8 @@ class Huffman:
             self.reverse_mapping[current_code] = root.char
             return
 
-        self.make_codes_helper(root.left, current_code + "0")
-        self.make_codes_helper(root.right, current_code + "1")
+        self.helper(root.left, current_code + "0")
+        self.helper(root.right, current_code + "1")
 
     def assignCodes(self):
         root = heapq.heappop(self.heap)
@@ -145,7 +145,7 @@ class Huffman:
             encoded_text += self.codes[character]
         return encoded_text
 
-    def pad_encoded_text(self, encoded_text):
+    def padEncodedText(self, encoded_text):
         extra_padding = 8 - len(encoded_text) % 8
         for i in range(extra_padding):
             encoded_text += "0"
@@ -154,7 +154,7 @@ class Huffman:
         encoded_text = padded_info + encoded_text
         return encoded_text
 
-    def get_byte_array(self, padded_encoded_text):
+    def getByteArray(self, padded_encoded_text):
         if(len(padded_encoded_text) % 8 != 0):
             print("Encoded text not padded properly")
             exit(0)
@@ -171,35 +171,42 @@ class Huffman:
     **************************************************************************************
     """
 
-    def decompress(self, input_path):
+    def decompress(self, compressed_file_path):
 
         # 1) Get name and extension of the file
         name_of_file, file_extension = os.path.splitext(self.path)
         name_of_file = name_of_file.split("/")[1]
+        # 2) Set Path for storing the decompressed file
         output_path = "deCompressedFiles/"+name_of_file + "_decompressed" + file_extension
 
-        with open(input_path, 'rb') as file, open(output_path, 'w') as output:
-            bit_string = ""
+        with open(compressed_file_path, 'rb') as file:
+            bitString = ""
             byte = file.read(1)
+
             while(len(byte) > 0):
+                # ord() = Returns the number representing the unicode code of a specified character.
                 byte = ord(byte)
+                # bin() = Converts and returns the binary equivalent string of a given integer
+                # rjust() = Will right align the string, using a specified character (space is default) as the fill character.
                 bits = bin(byte)[2:].rjust(8, '0')
-                bit_string += bits
+                bitString += bits
                 byte = file.read(1)
 
-            encoded_text = self.remove_padding(bit_string)
+            encoded_text = self.removePadding(bitString)
 
-            decompressed_text = self.decode_text(encoded_text)
+            decompressed_text = self.decodeText(encoded_text)
 
             if(file_extension in [".png", ".jpg"]):
                 self.handleImageFileDeCompression(
                     decompressed_text, output_path)
             else:
-                output.write(decompressed_text)
+                output_file = open(output_path, 'w')
+                output_file.write(decompressed_text)
+                output_file.close
 
         return output_path
 
-    def remove_padding(self, padded_encoded_text):
+    def removePadding(self, padded_encoded_text):
         padded_info = padded_encoded_text[:8]
         extra_padding = int(padded_info, 2)
 
@@ -208,7 +215,7 @@ class Huffman:
 
         return encoded_text
 
-    def decode_text(self, encoded_text):
+    def decodeText(self, encoded_text):
         current_code = ""
         decoded_text = ""
 
