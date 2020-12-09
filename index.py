@@ -31,7 +31,8 @@ if __name__ == "__main__":
     from Huffman import Huffman
 
     # 1) Path of the file to be compressed
-    path = "filesToCompress/sampleText.txt"
+    fileName="sampleText.txt"
+    path = "filesToCompress/"+fileName
 
     # 2) Create an Object of Class(HuffmanCoding)
     huffman = Huffman(path)
